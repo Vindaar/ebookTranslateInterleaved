@@ -1,0 +1,93 @@
+* LLM based ebook translation with interleaved text
+
+The code in this repo is intended to be used to translate an ebook you
+want to read into target language of your choice and produce an new
+ebook that contains interleaved paragraphs of the original and
+translated text.
+For context, I'm currently learning Spanish and reading Mistborn on my
+Kindle in Spanish (it's a book I really like and reading something I
+already know makes for a good learning exercise).
+The issue is that the Kindle is pretty slow in terms of using the
+inbuilt translate feature and often times it just fails with "failed
+to translate at the moment".
+
+So I thought I would produce my own ebook from the Spanish version. I
+wanted to translate the existing book instead of merging the original
+English with the Spanish translation, due to possible slight changes
+and to have something that is closer to a 'literal' translation for
+better language learning.
+
+Initially I thought I would produce a LaTeX document with each
+sentence interleaved (translation below the original text), but that
+turned out to be very painful to produce & any conversion to ebook
+formats didn't work anyway.
+
+Also, at first I thought about just using Google Translate to
+translate each sentence, but obviously they quickly flagged my code as
+a bot (what a surprise!) and paying a few dollars for enough Google
+Cloud credits to do the task felt a bit ridiculous. Especially in 2024
+where LLMs can do that job for me locally! Even a small 7B model like
+~llama3~ is perfectly capable of translating languages like Spanish
+with few enough mistakes that I don't mind.
+
+So here we are. See the section below on how it works. There's some
+minor manual work involved.
+
+
+Note on legality:
+Obviously depends on where you are, but I recommend you bought the ebooks
+that you translate. :)
+
+** Producing an ebook with interleaved translation
+
+1. Grab an ebook of your choice as a PDF
+2. Convert the PDF to a text file, keeping the layout in tact as well
+   as possible using:
+   #+begin_src sh
+pdftotext -layout the_ebook.pdf
+   #+end_src
+   which produces a ~the_ebook.txt~ file.
+3. Check the layout of the ~.txt~ file and determine
+   - how paragraphs are marked (should be something like four spaces
+     or so).
+   - how chapters are marked (something like 40 spaces or so)
+4. Run ~ebook_translate_interleaved.nim~,
+   #+begin_src sh
+nim c ebook_translate_interleaved.nim
+./ebook_translate_interleaved \
+     -f the_ebook.txt \
+     --paragraphDetect "    " \
+     --pageFooter "www.lectulandia.com - Página" \
+     --chapterDetect "                                         " \
+     --lastPage 529
+   #+end_src
+   which produces a ~.dat~ binary file containing a ~RawBook~.
+   The translation depends on an ~ollama~ server running on your
+   machine, which does the actually translation. I've been using
+   ~llama3 7B~ which works reasonably well.
+5. Run ~ebook_typeset_interleaved.nim~:
+   #+begin_src sh
+nim c ebook_typeset_interleaved.nim
+./ebook_typeset_interleaved \
+    -l the_translated_binary.dat \
+    -a the_ebook.txt \
+    --title "Title of book" \
+    --outfile interleaved.html
+   #+end_src
+6. Run Calibre's ~ebook-convert~:
+   #+begin_src sh
+ebook-convert interleaved.html interleaved.ebup --level1-toc "//*[name()='h2']"
+   #+end_src
+   where we indicate how each chapter should be detected.
+
+Then you can copy the ebook using Calibre to your ebook reader. :)
+
+** TODO Things missing
+
+- [ ] Make the LLM of your choice user adjustable
+- [X] Make output path of translation adjustable (the binary .dat
+  file)
+- [ ] Add support for continuation of translation when killing the
+  process (easy)
+- [ ] ?    
+   

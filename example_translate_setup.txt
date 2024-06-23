@@ -1,0 +1,1 @@
+From here on I will pass you a paragraph in Spanish and you will *ONLY* return the translation. No other output. And you will NOT rephrase anything, unless it is a phrase. For example, if the Spanish says 'dijo Kelsier', you will translate 'Kelsier said' and *NOT* 'he said' for example. Also note that Vin is female. We will start immediately. Here is the first paragraph:
