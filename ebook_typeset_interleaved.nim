@@ -35,7 +35,7 @@ const HtmlHeader = """
 </head>
 """
 
-proc addParagraph(html: XmlNode, oP, tP: Paragraph) =
+proc addParagraph(html: XmlNode, oP, tP: string) =
   # add HTML for last paragraph
   var x = newElement("div")
   x.attrs = {"class" : "paragraph"}.toXmlAttributes
@@ -43,11 +43,33 @@ proc addParagraph(html: XmlNode, oP, tP: Paragraph) =
   p.attrs = {"class" : "original"}.toXmlAttributes
   var t = newElement("p") # translation
   t.attrs = {"class" : "translation"}.toXmlAttributes
-  p.add newText(oP.s)
-  t.add newText(tP.s)
+  p.add newText(oP)
+  t.add newText(tP)
   x.add p
   x.add t
   html.add x
+
+proc addParagraph(html: XmlNode, oP, tP: Paragraph, sentencesPerParagraph: int) =
+  ## Adds the paragraps to the HTML node, and splits them after `sentencesPerParagraph`
+  ## if > 0.
+  if sentencesPerParagraph > 0:
+    let oS = oP.s.split(". ")
+    let numO = oS.len
+    let tS = tP.s.split(". ")
+    let numT = tS.len
+    let markDirty = numO != numT
+    let numP = numO div sentencesPerParagraph
+    for i in 0 ..< numP:
+      let mIdxO = min((i + 1) * sentencesPerParagraph, numO)
+      let mIdxT = min((i + 1) * sentencesPerParagraph, numP)
+      var o = oS[i ..< i + mIdxO].join(". ")
+      var t = tS[i ..< i + mIdxT].join(". ")
+      if i > 0:
+        o = "\t" & o
+        t = if markDirty: "*\t" & t else: "\t" & t
+      html.addParagraph(o, t)
+  else:
+    html.addParagraph(oP.s, tP.s)
 
 proc main(loadFrom, asText: string,
           paragraphDetect: string, # e.g. "    ",
@@ -56,6 +78,7 @@ proc main(loadFrom, asText: string,
           chapterDetect = "                                         ",
           title = "",
           outfile = "/tmp/test.html",
+          sentencesPerParagraph = -1, ## If given > 0, split each paragraph after this many sentences
          ) =
   let orig  = parseBook(readFile(asText),
                         paragraphDetect,
@@ -80,10 +103,10 @@ proc main(loadFrom, asText: string,
 
     # preface
     for j in 0 ..< ch.preface.len:
-      html.addParagraph(orig.chapters[i].preface[j], ch.preface[j])
+      html.addParagraph(orig.chapters[i].preface[j], ch.preface[j], sentencesPerParagraph)
     # chapter body
     for j in 0 ..< ch.paragraphs.len:
-      html.addParagraph(orig.chapters[i].paragraphs[j], ch.paragraphs[j])
+      html.addParagraph(orig.chapters[i].paragraphs[j], ch.paragraphs[j], sentencesPerParagraph)
 
   writeFile(outfile, (HtmlHeader % title) & $html)
 
