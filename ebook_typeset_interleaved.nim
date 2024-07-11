@@ -63,8 +63,8 @@ proc addParagraph(html: XmlNode, oP, tP: Paragraph, sentencesPerParagraph: int) 
     for i in 0 ..< numP:
       let mIdxO = min((i + 1) * sentencesPerParagraph, numO)
       let mIdxT = min((i + 1) * sentencesPerParagraph, numP)
-      var o = oS[i ..< i + mIdxO].join(". ")
-      var t = tS[i ..< i + mIdxT].join(". ")
+      var o = oS[i ..< mIdxO].join(". ")
+      var t = tS[i ..< mIdxT].join(". ")
       if i > 0:
         o = "\t" & o
         t = if markDirty: "*\t" & t else: "\t" & t
