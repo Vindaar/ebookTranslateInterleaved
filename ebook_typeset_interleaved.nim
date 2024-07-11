@@ -1,4 +1,5 @@
 import std / [strutils]
+from std / os import expandFilename
 import flatBuffers
 
 import std / [sequtils, strutils, xmltree, strtabs]
@@ -80,7 +81,7 @@ proc main(loadFrom, asText: string,
           outfile = "/tmp/test.html",
           sentencesPerParagraph = -1, ## If given > 0, split each paragraph after this many sentences
          ) =
-  let orig  = parseBook(readFile(asText),
+  let orig  = parseBook(readFile(expandFilename asText),
                         paragraphDetect,
                         pageFooter,
                         chapterDetect,
