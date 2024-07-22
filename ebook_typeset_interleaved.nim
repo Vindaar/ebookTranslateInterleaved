@@ -32,45 +32,75 @@ const HtmlHeader = """
             color: #666;
             margin-bottom: 15px;
         }
+        .indented {
+            text-indent: 4em;  /* This will indent the first line */
+            /* Or you can use this to indent the whole paragraph: */
+            /* padding-left: 2em; */
+        }
     </style>
 </head>
 """
 
-proc addParagraph(html: XmlNode, oP, tP: string) =
+proc addParagraph(html: XmlNode, oP, tP: string, toIndent: bool) =
   # add HTML for last paragraph
   var x = newElement("div")
   x.attrs = {"class" : "paragraph"}.toXmlAttributes
   var p = newElement("p") # original
-  p.attrs = {"class" : "original"}.toXmlAttributes
+  let sf = if toIndent: " indented" else: ""
+  p.attrs = {"class" : "original" & sf}.toXmlAttributes
   var t = newElement("p") # translation
-  t.attrs = {"class" : "translation"}.toXmlAttributes
+  t.attrs = {"class" : "translation" & sf}.toXmlAttributes
   p.add newText(oP)
   t.add newText(tP)
   x.add p
   x.add t
   html.add x
 
+proc fixupAndSplit(s: string): seq[string] =
+  result = s.multiReplace(
+    ("Mr. ", "Mr "),
+    ("Mrs. ", "Mrs "),
+    ("...", "…"),
+  ).split(". ")
+
 proc addParagraph(html: XmlNode, oP, tP: Paragraph, sentencesPerParagraph: int) =
   ## Adds the paragraps to the HTML node, and splits them after `sentencesPerParagraph`
   ## if > 0.
   if sentencesPerParagraph > 0:
-    let oS = oP.s.split(". ")
+    let oS = oP.s.fixupAndSplit()
     let numO = oS.len
-    let tS = tP.s.split(". ")
+    let tS = tP.s.fixupAndSplit()
     let numT = tS.len
     let markDirty = numO != numT
-    let numP = numO div sentencesPerParagraph
+    let numP = if numO mod sentencesPerParagraph == 0: numO div sentencesPerParagraph
+               else: (numO div sentencesPerParagraph) + 1
     for i in 0 ..< numP:
       let mIdxO = min((i + 1) * sentencesPerParagraph, numO)
-      let mIdxT = min((i + 1) * sentencesPerParagraph, numP)
-      var o = oS[i ..< mIdxO].join(". ")
-      var t = tS[i ..< mIdxT].join(". ")
-      if i > 0:
-        o = "\t" & o
-        t = if markDirty: "*\t" & t else: "\t" & t
-      html.addParagraph(o, t)
+      let mIdxT = min((i + 1) * sentencesPerParagraph, numT)
+      let k = i * sentencesPerParagraph
+      var o = oS[k ..< mIdxO].join(". ")
+      var t: string
+      if not markDirty:
+        t = tS[k ..< mIdxT].join(". ")
+      elif numT > numO:
+        doAssert k < mIdxT, "k is somehow larger than end, despite numT > numO: " & $numT & ", " & $numT & ", k: " & $k
+        if i < numP - 1: # all good
+          t = tS[k ..< mIdxT].join(". ")
+        else: # last iteration, take remainder of data
+          t = tS[k ..< numT].join(". ")
+      elif numT < numO:
+        if k > mIdxT: # no more data!
+          t = ""
+        else: # all good
+          t = tS[k ..< mIdxT].join(". ")
+      if i > 0 and markDirty:
+        t = "*" & t
+      if i < numP - 1:
+        o &= "."
+        t &= "."
+      html.addParagraph(o, t, toIndent = i > 0) # don't indent first iter
   else:
-    html.addParagraph(oP.s, tP.s)
+    html.addParagraph(oP.s, tP.s, false)
 
 proc main(loadFrom, asText: string,
           paragraphDetect: string, # e.g. "    ",
