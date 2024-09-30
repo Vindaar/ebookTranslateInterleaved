@@ -1,4 +1,4 @@
-import std / [strutils, parseutils, sequtils]
+import std / [strutils, parseutils, sequtils, os, htmlparser, xmltree, strtabs]
 
 proc parsePage*(book: string, start: int, pageDetect: static string): (int, int, string) =
   ## Returns the next page from `start` using `pageDetect` as the page boundary &
@@ -47,11 +47,11 @@ proc addIf(ps: var seq[Paragraph], p: Paragraph) =
   if p.s.len > 0:
     ps.add p
 
-proc parseBook*(data: string,
-                paragraphDetect: string,
-                pageFooter: string,
-                chapterDetect: string,
-                lastPage: int): RawBook =
+proc parseBookTxt*(data: string,
+                   paragraphDetect: string,
+                   pageFooter: string,
+                   chapterDetect: string,
+                   lastPage: int): RawBook =
   ## Parses a raw book as a string into a `RawBook`.
   ## Splits into chapters and paragraphs, takes into account prefaces.
   ##
@@ -140,16 +140,55 @@ proc parseBook*(data: string,
     else:
       p.s.add " " & l.strip # add a space!
 
+iterator getTexts*(html: XmlNode, divClassTranslate: string): XmlNode =
+  for x in findAll(html, "div"):
+    if "class" notin x.attrs or
+       x.attrs["class"] != divClassTranslate:
+      continue
+    yield x
+
+iterator epubFiles*(glob: string): XmlNode =
+                    #divClassTranslate: string,
+                    #tagsTranslate: string = "span"): XmlNode =
+  ## Parses a raw book as a string into a `RawBook`.
+  ## Splits into chapters and paragraphs, takes into account prefaces.
+  ##
+  ## The input book must be multiple HTML files extracted from an `epub` file.
+  ## This approach has the advantage that we keep the text formatting compared
+  ## to the txt based approach.
+  ##
+  ## `glob` is a file name glob that will be used to parse all HTML files matching it.
+  ##
+  ## `divClassTranslate` is the div class that contains data to be translated. Everything else
+  ## will be left untouched.
+  ## `tagsTranslate` are the tags that contain text to be translated in that div.
+  ## This will usually be a `<span>`. Between span tags might be empty `<p>` tags.
+  for f in walkFiles(glob.expandTilde()):
+    let html = loadHtml(f)
+    yield html
+
+    #for x in getTexts(html, divClassTranslate):
+
+
+    #echo html.attrs
+    #echo html.kind
+
+
+
 when isMainModule:
-  let b = parseBook(readFile("/t/el-imperio-final.-ed.-revisada-brandon-sanderson-z-library.txt"),
-                    "    ",
-                    "www.lectulandia.com - Página",
-                    "                                         ",
-                    lastPage = 529
-  )
-  for ch in b.chapters:
-    #echo "\t: ", ch.preface, "\n\n"
-    echo "Chapter: ", ch.name, " has ", ch.paragraphs.len, " paragraphs"
-    #for p in ch.paragraphs:
-    #  echo "\t: ", p
-    #  if p.s.len > 4000: quit()
+
+  when false: # text based
+    let b = parseBook(readFile("/t/el-imperio-final.-ed.-revisada-brandon-sanderson-z-library.txt"),
+                      "    ",
+                      "www.lectulandia.com - Página",
+                      "                                         ",
+                      lastPage = 529
+    )
+    for ch in b.chapters:
+      #echo "\t: ", ch.preface, "\n\n"
+      echo "Chapter: ", ch.name, " has ", ch.paragraphs.len, " paragraphs"
+      #for p in ch.paragraphs:
+      #  echo "\t: ", p
+      #  if p.s.len > 4000: quit()
+
+  let b = parseBookEpub("~/org/Books/elPozoDeLaAscension/52_split*.xhtml", "bs3")
