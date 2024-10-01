@@ -147,7 +147,7 @@ iterator getTexts*(html: XmlNode, divClassTranslate: string): XmlNode =
       continue
     yield x
 
-iterator epubFiles*(glob: string): XmlNode =
+iterator epubFiles*(glob: string): (string, XmlNode) =
                     #divClassTranslate: string,
                     #tagsTranslate: string = "span"): XmlNode =
   ## Parses a raw book as a string into a `RawBook`.
@@ -165,15 +165,7 @@ iterator epubFiles*(glob: string): XmlNode =
   ## This will usually be a `<span>`. Between span tags might be empty `<p>` tags.
   for f in walkFiles(glob.expandTilde()):
     let html = loadHtml(f)
-    yield html
-
-    #for x in getTexts(html, divClassTranslate):
-
-
-    #echo html.attrs
-    #echo html.kind
-
-
+    yield (f, html)
 
 when isMainModule:
 
